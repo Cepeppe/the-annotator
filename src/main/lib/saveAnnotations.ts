@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { BBoxYolo, SaveAnnotationsResult } from '../../shared/types';
 import { serializeYoloTxt } from '../../shared/yoloParser';
 import { labelFilenameForImage } from './datasetScanner';
+import { writeFileAtomic } from './atomicWrite';
 import { mt } from './appLocale';
 
 const RETRY_BACKOFFS_MS = [100, 300, 1000];
@@ -20,8 +21,10 @@ async function writeWithRetry(targetPath: string, content: string): Promise<void
   let lastError: Error | null = null;
   for (let attempt = 0; attempt <= RETRY_BACKOFFS_MS.length; attempt++) {
     try {
-      await ensureDir(path.dirname(targetPath));
-      await fs.writeFile(targetPath, content, { encoding: 'utf8' });
+      // Write to a temp file and rename over the target: a crash or a power cut
+      // mid-write then leaves the previous annotations intact instead of a
+      // truncated .txt. The bulk operations already rely on the same helper.
+      await writeFileAtomic(targetPath, content);
       return;
     } catch (err) {
       lastError = err as Error;

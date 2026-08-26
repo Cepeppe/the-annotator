@@ -372,6 +372,10 @@ export const it = {
   'about.trash.restore':
     "Per recuperare un'immagine, copia i file images/<nome> e labels/<nome>.txt dal cestino nelle rispettive cartelle del dataset, poi riapri il tool.",
 
+  // ---- Credit strip ----
+  'credit.developedBy': 'Sviluppato da Cepeppe',
+  'credit.openProfile': 'Apri il profilo GitHub di Cepeppe',
+
   // ---- Error boundary ----
   'errorBoundary.title': 'Si è verificato un errore inaspettato',
   'errorBoundary.body':

@@ -5,7 +5,8 @@ export default defineConfig({
   test: {
     include: [
       'src/shared/__tests__/**/*.test.ts',
-      'src/main/lib/__tests__/**/*.test.ts'
+      'src/main/lib/__tests__/**/*.test.ts',
+      'src/renderer/lib/__tests__/**/*.test.ts'
     ],
     environment: 'node',
     globals: false

@@ -271,6 +271,9 @@ export function useKeyboardShortcuts(opts: UseKeyboardShortcutsOptions): void {
           if (!edit) return;
           const ids = s.selectedBboxIds;
           const fromArr = ids.map((id) => edit.bboxes.find((b) => b.id === id)?.classId ?? targetId);
+          // Pressing the key of the class the boxes already have must not eat
+          // an undo slot on an operation that changes nothing.
+          if (fromArr.every((c) => c === targetId)) return;
           dp({
             type: 'APPLY_OP',
             op: { kind: 'changeClass', ids, from: fromArr, to: targetId }

@@ -146,11 +146,16 @@ async function reconcileOrphans(
   return summary;
 }
 
+/**
+ * `YYYY-MM-DD-HHMMSS` in UTC. It has to be UTC: `parseDirTimestamp`, which the
+ * 30-day cleanup uses to read a folder's age, reads these names back as UTC,
+ * and a local-time name would age the folder by the timezone offset.
+ */
 function formatTimestamp(d: Date): string {
   const pad = (n: number): string => String(n).padStart(2, '0');
   return (
-    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-` +
-    `${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`
+    `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}-` +
+    `${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}`
   );
 }
 

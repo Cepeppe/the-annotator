@@ -7,7 +7,6 @@ import {
   type ReactNode
 } from 'react';
 import type {
-  BBoxGeometry,
   BBoxYolo,
   FilterState,
   FilterStatus,
@@ -18,17 +17,22 @@ import type {
   UserSettings
 } from '@shared/types';
 import {
+  applyDelta,
+  applyOpForward,
+  applyOpInverse,
   canRedo as stackCanRedo,
   canUndo as stackCanUndo,
+  countsDeltaForward,
+  countsDeltaInverse,
   createUndoStack,
   popRedo,
   popUndo,
   pushOp,
+  selectionAfterOp,
   type BBoxLocal,
   type UndoableOp,
   type UndoStack
 } from '@shared/undoStack';
-import { clampGeometry01 } from '@shared/bboxMath';
 import { DEFAULT_LANGUAGE_PREFERENCE } from '@shared/i18n';
 
 export type EditMode = 'select' | 'draw';
@@ -183,122 +187,6 @@ function evictIfNeeded(
     newLru.splice(idx, 1);
   }
   return { perImage: newMap, lru: newLru };
-}
-
-function applyOpForward(bboxes: BBoxLocal[], op: UndoableOp): BBoxLocal[] {
-  switch (op.kind) {
-    case 'create':
-      return [...bboxes, ...op.bboxes];
-    case 'delete': {
-      const ids = new Set(op.bboxes.map((b) => b.id));
-      return bboxes.filter((b) => !ids.has(b.id));
-    }
-    case 'move':
-    case 'resize':
-      return bboxes.map((b) =>
-        b.id === op.id ? { ...b, ...clampGeometry01(op.to) } : b
-      );
-    case 'changeClass': {
-      const ids = new Set(op.ids);
-      return bboxes.map((b) => (ids.has(b.id) ? { ...b, classId: op.to } : b));
-    }
-    default:
-      return bboxes;
-  }
-}
-
-function applyOpInverse(bboxes: BBoxLocal[], op: UndoableOp): BBoxLocal[] {
-  switch (op.kind) {
-    case 'create': {
-      const ids = new Set(op.bboxes.map((b) => b.id));
-      return bboxes.filter((b) => !ids.has(b.id));
-    }
-    case 'delete':
-      return [...bboxes, ...op.bboxes];
-    case 'move':
-    case 'resize':
-      return bboxes.map((b) =>
-        b.id === op.id ? { ...b, ...clampGeometry01(op.from) } : b
-      );
-    case 'changeClass': {
-      const fromById = new Map<string, number>();
-      op.ids.forEach((id, idx) => fromById.set(id, op.from[idx] ?? op.to));
-      return bboxes.map((b) =>
-        fromById.has(b.id) ? { ...b, classId: fromById.get(b.id)! } : b
-      );
-    }
-    default:
-      return bboxes;
-  }
-}
-
-function countsDeltaForward(op: UndoableOp): Record<number, number> {
-  const delta: Record<number, number> = {};
-  switch (op.kind) {
-    case 'create':
-      for (const b of op.bboxes) delta[b.classId] = (delta[b.classId] ?? 0) + 1;
-      break;
-    case 'delete':
-      for (const b of op.bboxes) delta[b.classId] = (delta[b.classId] ?? 0) - 1;
-      break;
-    case 'changeClass':
-      for (let i = 0; i < op.ids.length; i++) {
-        const from = op.from[i] ?? op.to;
-        delta[from] = (delta[from] ?? 0) - 1;
-        delta[op.to] = (delta[op.to] ?? 0) + 1;
-      }
-      break;
-    default:
-      break;
-  }
-  return delta;
-}
-
-function countsDeltaInverse(op: UndoableOp): Record<number, number> {
-  const delta: Record<number, number> = {};
-  switch (op.kind) {
-    case 'create':
-      for (const b of op.bboxes) delta[b.classId] = (delta[b.classId] ?? 0) - 1;
-      break;
-    case 'delete':
-      for (const b of op.bboxes) delta[b.classId] = (delta[b.classId] ?? 0) + 1;
-      break;
-    case 'changeClass':
-      for (let i = 0; i < op.ids.length; i++) {
-        const from = op.from[i] ?? op.to;
-        delta[from] = (delta[from] ?? 0) + 1;
-        delta[op.to] = (delta[op.to] ?? 0) - 1;
-      }
-      break;
-    default:
-      break;
-  }
-  return delta;
-}
-
-function applyDelta(
-  base: Record<number, number>,
-  delta: Record<number, number>
-): Record<number, number> {
-  const next: Record<number, number> = { ...base };
-  for (const [k, v] of Object.entries(delta)) {
-    const id = Number(k);
-    next[id] = (next[id] ?? 0) + v;
-    if (next[id] < 0) next[id] = 0;
-  }
-  return next;
-}
-
-function selectionAfterOp(selection: string[], op: UndoableOp, isInverse: boolean): string[] {
-  if (op.kind === 'delete') {
-    if (isInverse) return [...op.bboxes.map((b) => b.id)];
-    return selection.filter((id) => !op.bboxes.some((b) => b.id === id));
-  }
-  if (op.kind === 'create') {
-    if (isInverse) return selection.filter((id) => !op.bboxes.some((b) => b.id === id));
-    return [...op.bboxes.map((b) => b.id)];
-  }
-  return selection;
 }
 
 function reducer(state: DatasetState, action: DatasetAction): DatasetState {

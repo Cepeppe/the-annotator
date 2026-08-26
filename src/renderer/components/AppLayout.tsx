@@ -32,9 +32,11 @@ import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 import { DeleteImageConfirmDialog } from './DeleteImageConfirmDialog';
 import { DeleteImagesBulkConfirmDialog } from './DeleteImagesBulkConfirmDialog';
 import { BulkDeleteImagesProgressDialog } from './BulkDeleteImagesProgressDialog';
+import { AppCredit } from './AppCredit';
 import { applyTheme } from '../lib/themeManager';
 import { setLocale, useT } from '../i18n';
 import { plural, resolveLocale, type TranslateFn } from '@shared/i18n';
+import { reorderClasses, reorderIdMapping } from '@shared/classOps';
 import type {
   BulkOpMenuKind,
   BulkOpResult,
@@ -840,6 +842,14 @@ export function AppLayout({
             ? t('toast.bulkFailedRolledBack', { reason: result.reason })
             : t('toast.bulkFailedNotRolledBack', { reason: result.reason })
         );
+        if (!result.rolledBack) {
+          // The rollback itself failed, so labels/ is now somewhere between the
+          // two states and the class list on screen no longer describes it.
+          // data.yaml was never rewritten, so the old class list is still the
+          // right one to count against: rescan so the sidebar and the
+          // out-of-range banner show what is actually on disk.
+          await recomputeStats(s.root, s.classes);
+        }
         return;
       }
 
@@ -954,15 +964,16 @@ export function AppLayout({
       if (!fromName) return;
       // Compute newClasses and the oldId -> newId mapping here, so
       // APPLY_CLASS_REMAP can be applied locally once the IPC call succeeds.
-      const newClasses = [...s.classes];
-      const [moved] = newClasses.splice(fromIndex, 1);
-      if (moved === undefined) return;
-      newClasses.splice(toIndex, 0, moved);
+      const newClasses = reorderClasses(s.classes, fromIndex, toIndex);
+      if (newClasses === null) return;
+      // Positional, never `newClasses.indexOf(name)`: a data.yaml written by
+      // another tool can repeat a name, and indexOf would then map both copies
+      // onto the same id. This has to match what bulkReorderClasses does to the
+      // .txt files, or the boxes held in memory would end up on other classes.
+      const shifts = reorderIdMapping(s.classes.length, fromIndex, toIndex);
       const mapping: Record<number, number | null> = {};
       for (let oldId = 0; oldId < s.classes.length; oldId++) {
-        const name = s.classes[oldId];
-        if (name === undefined) continue;
-        mapping[oldId] = newClasses.indexOf(name);
+        mapping[oldId] = shifts.get(oldId) ?? oldId;
       }
       const remapList = Object.entries(mapping)
         .filter(([from, to]) => to !== null && Number(from) !== to)
@@ -1177,6 +1188,12 @@ export function AppLayout({
           />
         </aside>
       </div>
+
+      {/* Credit strip, bottom right. flex-none so it never steals height from
+          the canvas row above it. */}
+      <footer className="flex-none flex justify-end items-center h-6 px-3 border-t border-app-border bg-app-surface">
+        <AppCredit />
+      </footer>
 
       {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
 

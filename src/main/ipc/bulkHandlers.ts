@@ -190,8 +190,14 @@ export function registerBulkHandlers(getMainWindow: () => BrowserWindow | null):
         return { ok: false, reason: 'Invalid arguments' };
       }
       try {
-        const backupPath = await createBackup(datasetRoot, label, files);
-        return { ok: true, backupPath };
+        const backup = await createBackup(datasetRoot, label, files);
+        if (backup.unreadable.length > 0) {
+          return {
+            ok: false,
+            reason: `${backup.unreadable.length} file(s) could not be copied into the backup`
+          };
+        }
+        return { ok: true, backupPath: backup.backupPath };
       } catch (err) {
         return { ok: false, reason: (err as Error).message };
       }

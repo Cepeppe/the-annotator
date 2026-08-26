@@ -373,6 +373,10 @@ export const en = {
   'about.trash.restore':
     'To restore an image, copy the files images/<name> and labels/<name>.txt from the trash back into the matching dataset folders, then reopen the tool.',
 
+  // ---- Credit strip ----
+  'credit.developedBy': 'Developed by Cepeppe',
+  'credit.openProfile': "Open Cepeppe's GitHub profile",
+
   // ---- Error boundary ----
   'errorBoundary.title': 'Something went wrong',
   'errorBoundary.body':

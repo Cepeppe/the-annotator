@@ -18,22 +18,25 @@ export async function writeFileAtomic(
   content: string | Buffer
 ): Promise<void> {
   await ensureDir(path.dirname(targetPath));
-  const tmpPath = `${targetPath}.${process.pid}.${Date.now()}.tmp`;
+  const tmpPath = `${targetPath}.${process.pid}.${Date.now()}.${nextTmpSeq()}.tmp`;
   const handle = await fs.open(tmpPath, 'w');
   try {
-    await handle.writeFile(content);
     try {
-      await handle.sync();
-    } catch {
-      // fsync is not supported on every filesystem (network shares, for one).
-      // Durability here is best-effort, so a failure is not fatal.
+      await handle.writeFile(content);
+      try {
+        await handle.sync();
+      } catch {
+        // fsync is not supported on every filesystem (network shares, for one).
+        // Durability here is best-effort, so a failure is not fatal.
+      }
+    } finally {
+      await handle.close();
     }
-  } finally {
-    await handle.close();
-  }
-  try {
     await fs.rename(tmpPath, targetPath);
   } catch (err) {
+    // Covers a failed write (ENOSPC) as well as a failed rename (the target is
+    // locked): either way the half-written temp file must not be left behind
+    // in labels/, where the next scan would find it.
     try {
       await fs.unlink(tmpPath);
     } catch {
@@ -41,4 +44,12 @@ export async function writeFileAtomic(
     }
     throw err;
   }
+}
+
+// Two writes to the same path in the same millisecond would otherwise pick the
+// same temp name and clobber each other.
+let tmpSeq = 0;
+function nextTmpSeq(): number {
+  tmpSeq = (tmpSeq + 1) % 1_000_000;
+  return tmpSeq;
 }

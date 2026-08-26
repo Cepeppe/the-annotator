@@ -190,7 +190,9 @@ Menus worth knowing about:
 All of them live under **Tools → Bulk operations** and share the same safety net:
 pending edits are flushed first, a backup of every file about to change is
 written to `.annotation-progress-cache/backup/`, progress is shown in a
-cancellable dialog, and a failure rolls every file back.
+cancellable dialog, and a failure rolls every file back. If any file cannot be
+copied into the backup the operation refuses to start, rather than making a
+change it would not be able to undo.
 
 | Operation | What it does |
 |---|---|
@@ -234,7 +236,7 @@ npm install
 
 npm run dev          # start the app with hot reload
 npm run typecheck    # tsc over the main and renderer projects
-npm run test         # 48 Vitest tests over the pure modules
+npm run test         # 98 Vitest tests over the pure modules
 npm run build        # typecheck, then bundle into out/
 ```
 
@@ -259,6 +261,7 @@ src/
 │  ├─ components/ views and dialogs
 │  ├─ hooks/      autosave, navigation, keyboard shortcuts
 │  ├─ i18n/       locale state and the useT hook
+│  ├─ lib/        theme, canvas selection helpers
 │  └─ state/      Context + useReducer store
 └─ shared/        types, YOLO/YAML parsing, geometry, undo stack, i18n catalogs
 ```

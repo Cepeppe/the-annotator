@@ -30,6 +30,22 @@ let currentTheme: AppTheme = 'light';
 
 const CLOSE_HANDSHAKE_TIMEOUT_MS = 2000;
 
+/**
+ * Hands a URL to the system browser, but only for http(s). Anything else
+ * (file:, and the shell handlers Windows registers for custom schemes) is
+ * dropped rather than passed to the OS.
+ */
+function openExternalIfWeb(url: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return;
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return;
+  void shell.openExternal(url);
+}
+
 function getMainWindow(): BrowserWindow | null {
   return mainWindow;
 }
@@ -63,8 +79,20 @@ function createWindow(): void {
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url);
+    openExternalIfWeb(url);
     return { action: 'deny' };
+  });
+
+  // Nothing may navigate the window away from the bundled UI. A `target="_blank"`
+  // link (the credit strip) goes through the handler above; this covers anything
+  // that would replace the page instead, which would leave the app unusable
+  // until it is restarted. Reloads are not affected: Electron does not emit
+  // will-navigate for window.location.reload(), which is what the error
+  // boundary uses.
+  mainWindow.webContents.on('will-navigate', (evt, url) => {
+    if (url === mainWindow?.webContents.getURL()) return;
+    evt.preventDefault();
+    openExternalIfWeb(url);
   });
 
   mainWindow.webContents.on('render-process-gone', (_evt, details) => {

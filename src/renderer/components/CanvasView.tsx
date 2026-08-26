@@ -20,7 +20,8 @@ import {
   type EditMode,
   type ViewState
 } from '../state/datasetStore';
-import type { BBoxLocal } from '@shared/undoStack';
+import { batchOps, type BBoxLocal, type UndoableOp } from '@shared/undoStack';
+import { withSelectionSuspended, type SelectionHost } from '../lib/canvasSelection';
 import { clampGeometry01 } from '@shared/bboxMath';
 import { plural } from '@shared/i18n';
 import { t as translate, useT } from '../i18n';
@@ -626,10 +627,17 @@ export function CanvasView({
       if (target.type === 'activeselection' || target.type === 'activeSelection') {
         const sel = target as unknown as { _objects?: FabricObject[] };
         const children = sel._objects ?? [];
+        const ops: UndoableOp[] = [];
         for (const child of children) {
           if (!isLabeledRect(child)) continue;
-          dispatchMove(child, loaded, dispatchRef.current, bboxesRef.current);
+          const op = moveOpFor(child, loaded, bboxesRef.current);
+          if (op) ops.push(op);
         }
+        // One gesture, one undo step: dispatching an op per box would make the
+        // user press Ctrl+Z once for each of them, and would fill the 50-op
+        // stack after a couple of multi-selection drags.
+        const batched = batchOps(ops);
+        if (batched) dispatchRef.current({ type: 'APPLY_OP', op: batched });
         return;
       }
 
@@ -899,6 +907,31 @@ function syncBboxes(
   guard: React.MutableRefObject<boolean>
 ): void {
   guard.current = true;
+  try {
+    // The whole rebuild runs with the selection suspended: a box inside an
+    // ActiveSelection holds left/top relative to the selection, so writing image
+    // coordinates onto it below would displace every selected box. The selection
+    // handlers ignore the discard and the restore, because `guard` is set for
+    // the whole function.
+    withSelectionSuspended(
+      selectionHost(fabric),
+      (id) => rects.get(id),
+      () => rebuildRects(fabric, rects, bboxes, classes, loaded)
+    );
+  } finally {
+    // Without the finally, one throw in here would leave the guard set and the
+    // canvas would stop reporting selection changes for the rest of the session.
+    guard.current = false;
+  }
+}
+
+function rebuildRects(
+  fabric: Canvas,
+  rects: Map<string, LabeledRect>,
+  bboxes: BBoxLocal[],
+  classes: string[],
+  loaded: LoadedImage
+): void {
   const wantedIds = new Set(bboxes.map((b) => b.id));
   const enableCaching = bboxes.length <= MAX_BBOX_FOR_CACHING;
   const zoom = fabric.getZoom();
@@ -993,7 +1026,19 @@ function syncBboxes(
       rects.set(b.id, rect);
     }
   }
-  guard.current = false;
+}
+
+function selectionHost(fabric: Canvas): SelectionHost {
+  return {
+    getActiveObjects: () => fabric.getActiveObjects(),
+    discardActiveObject: () => {
+      fabric.discardActiveObject();
+    },
+    setActiveObject: (obj) => {
+      fabric.setActiveObject(obj);
+    },
+    makeMultiSelection: (objects) => new ActiveSelection(objects, { canvas: fabric })
+  };
 }
 
 function isInsideImage(p: { x: number; y: number }, loaded: LoadedImage): boolean {
@@ -1237,22 +1282,30 @@ function formatTick(v: number): string {
   return String(r);
 }
 
-function dispatchMove(
+/**
+ * The move (or resize) one box inside a multi-selection just underwent, or null
+ * when it did not actually change.
+ */
+function moveOpFor(
   child: LabeledRect,
   loaded: LoadedImage,
-  dispatch: ReturnType<typeof useDataset>['dispatch'],
   bboxes: BBoxLocal[]
-): void {
+): UndoableOp | null {
   const id = child.__bboxId;
   const before = bboxes.find((b) => b.id === id);
-  if (!before) return;
+  if (!before) return null;
   // getCenterPoint() returns the absolute coordinates of the object centre,
   // independent of originX/originY and accounting for a parent group
   // (multi-select / ActiveSelection). Do not use calcTransformMatrix()[4]/[5]:
   // with origin 'left'/'top' those are the top-left corner, not the centre.
   const center = child.getCenterPoint();
-  const w = (child.width ?? 0) * (child.scaleX ?? 1);
-  const h = (child.height ?? 0) * (child.scaleY ?? 1);
+  // getObjectScaling(), not child.scaleX: scaling an ActiveSelection leaves the
+  // children's own scale at 1 and puts the factor on the group, so
+  // width * scaleX would report the box at its pre-resize size and the resize
+  // would be silently thrown away.
+  const scaling = child.getObjectScaling();
+  const w = (child.width ?? 0) * scaling.x;
+  const h = (child.height ?? 0) * scaling.y;
   const newGeom = clampGeometry01({
     xCenter: center.x / loaded.width,
     yCenter: center.y / loaded.height,
@@ -1265,9 +1318,9 @@ function dispatchMove(
     width: before.width,
     height: before.height
   };
-  if (geomEquals(fromGeom, newGeom)) return;
-  dispatch({
-    type: 'APPLY_OP',
-    op: { kind: 'move', id, from: fromGeom, to: newGeom }
-  });
+  if (geomEquals(fromGeom, newGeom)) return null;
+  const resized =
+    Math.abs(fromGeom.width - newGeom.width) > 1e-6 ||
+    Math.abs(fromGeom.height - newGeom.height) > 1e-6;
+  return { kind: resized ? 'resize' : 'move', id, from: fromGeom, to: newGeom };
 }

@@ -1,5 +1,6 @@
 import type { RecentDataset } from '@shared/types';
 import { useDateTimeFormat, useT } from '../i18n';
+import { AppCredit } from './AppCredit';
 
 interface WelcomeScreenProps {
   onOpenDataset: () => void;
@@ -19,7 +20,12 @@ export function WelcomeScreen({
   const steps = [t('welcome.step1'), t('welcome.step2'), t('welcome.step3')];
 
   return (
-    <div className="h-full w-full flex items-center justify-center bg-app-bg">
+    <div className="relative h-full w-full flex items-center justify-center bg-app-bg">
+      {/* Same bottom-right credit as the main layout. Absolute here, because the
+          welcome screen centres a single card instead of stacking rows. */}
+      <div className="absolute bottom-3 right-4">
+        <AppCredit />
+      </div>
       <div className="max-w-xl w-full px-10 py-12 flex flex-col items-center text-center">
         <h1 className="text-4xl font-semibold text-app-text mb-2">the-annotator</h1>
         <p className="text-app-text-muted mb-10">{t('welcome.tagline')}</p>
