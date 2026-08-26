@@ -10,8 +10,8 @@ import type { Object as FabricObject } from 'fabric';
  * (an undo, a redo, a class change, the end of a multi-box drag): writing image
  * coordinates straight onto a box that is currently inside a selection moves it
  * by the selection's offset. With a selection centred at (225, 225), a box the
- * store places at (150, 150) ends up at (375, 375) — and the next drag then
- * writes that wrong position back to the .txt file.
+ * store places at (150, 150) ends up at (375, 375), and the next drag writes
+ * that wrong position back to the .txt file.
  *
  * The fix is to take the selection apart before touching the boxes and put it
  * back afterwards, which is what `withSelectionSuspended` does.

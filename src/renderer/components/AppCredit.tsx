@@ -18,7 +18,7 @@ export function AppCredit({ className = '' }: { className?: string }): JSX.Eleme
       href={AUTHOR_URL}
       target="_blank"
       rel="noreferrer"
-      title={`${t('credit.openProfile')} — ${AUTHOR_URL}`}
+      title={`${t('credit.openProfile')}: ${AUTHOR_URL}`}
       className={`inline-flex items-center gap-1.5 text-[11px] text-app-text-muted hover:text-app-accent hover:underline focus:outline-none focus-visible:ring-1 focus-visible:ring-app-accent rounded-sm ${className}`}
     >
       <svg
