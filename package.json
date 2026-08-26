@@ -3,7 +3,7 @@
   "productName": "the-annotator",
   "version": "1.0.0",
   "private": true,
-  "description": "Offline desktop editor for YOLO object detection datasets",
+  "description": "Offline annotation tool for YOLO object detection datasets",
   "keywords": [
     "yolo",
     "annotation",

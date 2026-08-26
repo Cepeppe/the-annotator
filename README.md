@@ -1,9 +1,10 @@
 # the-annotator
 
-A desktop editor for YOLO object detection datasets. Open a folder that contains
-`data.yaml`, `images/` and `labels/`, review every image in a side list, and fix
-the bounding boxes on a zoomable canvas. Everything is saved back to the plain
-YOLO `.txt` files you started from.
+A desktop annotation tool for YOLO object detection datasets. Open a folder that
+contains `data.yaml`, `images/` and `labels/`, work through the images in a side
+list, and draw or fix the bounding boxes on a zoomable canvas. Everything is
+saved back to the plain YOLO `.txt` files you started from, so a dataset can be
+annotated from scratch or cleaned up, whichever it needs.
 
 Fully offline: no account, no cloud, no telemetry, no network access after
 installation. Windows 10/11 x64, English and Italian interface.
@@ -29,8 +30,9 @@ installation. Windows 10/11 x64, English and Italian interface.
 
 Most YOLO datasets do not arrive clean. Classes get renamed, two labels turn out
 to mean the same thing, a handful of images are unusable, and a few annotations
-point at class ids that no longer exist. `the-annotator` is built around that
-clean-up pass rather than around labelling from scratch:
+point at class ids that no longer exist. `the-annotator` labels from scratch as
+well as any box drawing tool, but what it is actually built around is that
+clean-up pass:
 
 - an annotator can work through a large dataset image by image, with a filter for
   what is still to do and a progress bar that survives across sessions;
