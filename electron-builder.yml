@@ -1,0 +1,66 @@
+appId: it.custom-labeler.app
+productName: the-annotator
+copyright: Copyright © 2026 Cepeppe (https://github.com/Cepeppe)
+
+directories:
+  output: dist
+  buildResources: build
+
+# What ends up inside app.asar. Only the bundled output and the manifest are
+# needed at runtime; everything else is stripped to keep the installer small.
+files:
+  - "out/**/*"
+  - "package.json"
+  - "!**/{README,readme,Readme,CHANGELOG,changelog,CONTRIBUTING}.md"
+  - "!**/*.{ts,tsx,map,d.ts}"
+  # NOTE: do NOT exclude `doc` (singular) - the `yaml` package ships runtime
+  # code under node_modules/yaml/dist/doc/ (directives.js, Document.js, ...).
+  - "!**/{test,tests,__tests__,examples,docs,demo}/**"
+  - "!**/{.git,.github,.idea,.vscode,.eslintrc*,.prettierrc*,tsconfig*.json}"
+  - "!**/*.{ts,tsx,jsx}"
+  - "!node_modules/**/{LICENSE,LICENCE,license,LICENSE.*,LICENSE-*}"
+
+asar: true
+asarUnpack:
+  - "**/*.{node,dll}"
+
+compression: normal
+
+# The app is fully offline: no update server, no remote publishing target.
+publish: null
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  icon: build/icon.ico
+  artifactName: "${productName}-${version}-${arch}-${target}.${ext}"
+  # The binaries are not code-signed: Windows SmartScreen will warn on first run.
+  forceCodeSigning: false
+  signAndEditExecutable: false
+  signtoolOptions:
+    publisherName: Cepeppe
+
+nsis:
+  oneClick: false
+  perMachine: false              # user-scoped install, no administrator rights
+  allowToChangeInstallationDirectory: true
+  allowElevation: false
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: the-annotator
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  uninstallDisplayName: the-annotator
+  artifactName: "${productName}-${version}-${arch}-setup.${ext}"
+  deleteAppDataOnUninstall: false   # keep userData (settings + recent datasets)
+  differentialPackage: false
+  runAfterFinish: true
+
+portable:
+  artifactName: "${productName}-${version}-${arch}-portable.${ext}"
+  unicode: true

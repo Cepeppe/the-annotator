@@ -1,0 +1,77 @@
+# --- Build artifacts ---
+node_modules/
+out/
+out-tsc/
+dist/
+build/Release/
+
+# --- the-annotator per-dataset runtime cache ---
+# Thumbnails, backups and trash of local test datasets must never be committed.
+.annotation-progress-cache/
+
+# --- Electron / Vite caches ---
+.electron-builder.cache/
+.vite/
+.cache/
+# electron-vite writes a timestamped copy of the config next to the original
+# while bundling it; it embeds absolute local paths, so it must stay untracked.
+electron.vite.config.*.mjs
+electron.vite.config.*.js
+
+# --- TypeScript ---
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# --- Coverage / test ---
+coverage/
+.nyc_output/
+*.lcov
+
+# --- Logs ---
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# --- Lockfiles of other package managers (we only keep package-lock.json) ---
+yarn.lock
+pnpm-lock.yaml
+
+# --- Environment / secrets ---
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+*.pfx
+
+# --- IDE / Editor ---
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json.example
+.idea/
+.cursor/
+.windsurf/
+*.sublime-workspace
+*.sublime-project
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# --- Temporary / backup files ---
+*.tmp
+*.bak
+*.swp
+*~
+*.orig
+
+# --- Local test datasets (sample images must not be committed) ---
+test-dataset/
+sample-dataset/
+*-dataset/
